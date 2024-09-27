@@ -1,7 +1,7 @@
-=== YouTube Live Stream Embed ===
+=== Livestream Embedder ===
 Contributors: stronganchortech
 Donate link: https://stronganchortech.com/sponsor
-Tags: youtube, live stream, embed, shortcode, video
+Tags: youtube, live stream, embed, shortcode, video, livestream
 Requires at least: 5.0
 Tested up to: 6.6.2
 Stable tag: 1.0.0
@@ -12,7 +12,7 @@ Embeds a YouTube live stream or the most recent video from a channel using a sim
 
 == Description ==
 
-YouTube Live Stream Embed allows you to embed a live stream from a YouTube channel or the most recent video using a shortcode. You can configure the API key and channel ID via the plugin's settings page.
+Livestream Embedder allows you to embed a live stream from a YouTube channel or the most recent video using a shortcode. You can configure the API key and channel ID via the plugin's settings page.
 
 **Features:**
 * Embed a live stream or most recent video with a shortcode.
@@ -23,12 +23,12 @@ YouTube Live Stream Embed allows you to embed a live stream from a YouTube chann
 **Shortcode Usage:**
 
 1. To embed a live stream from a specific channel:
-   `[youtube_live_stream channel_id="CHANNEL_ID"]`
+   `[livestream_embedder channel_id="CHANNEL_ID"]`
 
    Replace `CHANNEL_ID` with the actual YouTube channel ID (e.g. `UCabcdefghijklmnopqrstuvwx`).
 
 2. If you've configured a default channel ID in the plugin settings, you can use the shortcode without the `channel_id` attribute:
-   `[youtube_live_stream]`
+   `[livestream_embedder]`
 
 **How to Find the Channel ID:**
 
@@ -38,10 +38,10 @@ YouTube Live Stream Embed allows you to embed a live stream from a YouTube chann
 
 == Installation ==
 
-1. Upload the plugin files to the `/wp-content/plugins/youtube-live-stream-embed` directory, or install the plugin through the WordPress plugins screen directly.
+1. Upload the plugin files to the `/wp-content/plugins/livestream-embedder` directory, or install the plugin through the WordPress plugins screen directly.
 2. Activate the plugin through the 'Plugins' screen in WordPress.
-3. Go to **Settings > YouTube Live Stream** to configure the API key and default channel ID.
-4. Use the `[youtube_live_stream]` shortcode in your posts or pages to embed the live stream.
+3. Go to **Settings > Livestream Embedder** to configure the API key and default channel ID.
+4. Use the `[livestream_embedder]` shortcode in your posts or pages to embed the live stream.
 
 == Frequently Asked Questions ==
 
