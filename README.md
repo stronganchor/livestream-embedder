@@ -1,6 +1,6 @@
 === YouTube Live Stream Embed ===
 Contributors: stronganchortech
-Donate link: https://stronganchortech.com/
+Donate link: https://stronganchortech.com/sponsor
 Tags: youtube, live stream, embed, shortcode, video
 Requires at least: 5.0
 Tested up to: 6.6.2
