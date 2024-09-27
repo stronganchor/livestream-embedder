@@ -62,6 +62,12 @@ function youtube_live_stream_settings_page_content() {
 
 // Register settings
 function youtube_live_stream_register_settings() {
+    // Nonce verification before processing form data
+    if (isset($_POST['youtube_live_stream_nonce']) && !wp_verify_nonce($_POST['youtube_live_stream_nonce'], 'youtube_live_stream_settings_action')) {
+        wp_die(__('Nonce verification failed. Please reload the page and try again.', 'youtube-live-stream'));
+    }
+
+    // Register settings if nonce is valid
     register_setting('youtube_live_stream_settings', 'youtube_live_stream_api_key', 'sanitize_text_field');
     register_setting('youtube_live_stream_settings', 'youtube_live_stream_default_channel', 'sanitize_text_field');
 
