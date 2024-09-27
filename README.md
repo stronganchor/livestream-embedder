@@ -1,4 +1,5 @@
 === YouTube Live Stream Embed ===
+
 Contributors: stronganchortech
 Donate link: https://stronganchortech.com/sponsor
 Tags: youtube, live stream, embed, shortcode, video
