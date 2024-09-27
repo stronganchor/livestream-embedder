@@ -3,7 +3,7 @@
 Plugin Name: YouTube Live Stream Embed
 Plugin URI: https://github.com/stronganchor/youtube-livestream-embed/
 Description: Embeds a YouTube live stream using a shortcode.
-Version: 1.0.3
+Version: 1.0.0
 Author: Strong Anchor Tech
 Author URI: https://stronganchortech.com/
 */
