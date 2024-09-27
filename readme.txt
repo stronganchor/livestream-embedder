@@ -1,7 +1,7 @@
 === Livestream Embedder ===
 Contributors: stronganchortech
 Donate link: https://stronganchortech.com/sponsor
-Tags: youtube, live stream, embed, shortcode, video, livestream
+Tags: youtube, livestream, embed, shortcode, video
 Requires at least: 5.0
 Tested up to: 6.6.2
 Stable tag: 1.0.0
