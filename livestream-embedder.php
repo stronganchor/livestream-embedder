@@ -1,4 +1,6 @@
 <?php
+if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
+
 /*
 Plugin Name: Livestream Embedder
 Plugin URI: https://github.com/stronganchor/livestream-embedder/
@@ -37,7 +39,6 @@ function livestream_embedder_settings_page_content() {
         <h1><?php esc_html_e('Livestream Embedder Settings', 'livestream-embedder'); ?></h1>
         <form method="post" action="options.php">
             <?php
-            // Add nonce for security
             wp_nonce_field('livestream_embedder_settings_action', 'livestream_embedder_nonce');
             settings_fields('livestream_embedder_settings');
             do_settings_sections('livestream-embedder-settings');
@@ -64,12 +65,10 @@ function livestream_embedder_settings_page_content() {
 
 // Register settings
 function livestream_embedder_register_settings() {
-    // Nonce verification before processing form data
     if (isset($_POST['livestream_embedder_nonce']) && !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['livestream_embedder_nonce'])), 'livestream_embedder_settings_action')) {
         wp_die(esc_html__('Nonce verification failed. Please reload the page and try again.', 'livestream-embedder'));
     }
 
-    // Register settings
     register_setting('livestream_embedder_settings', 'livestream_embedder_api_key', 'sanitize_text_field');
     register_setting('livestream_embedder_settings', 'livestream_embedder_default_channel', 'sanitize_text_field');
 
@@ -103,39 +102,21 @@ function livestream_embedder_section_callback() {
     echo '<p>' . esc_html__('Enter your YouTube Data API key and default channel ID below:', 'livestream-embedder') . '</p>';
 }
 
-// API key field callback
 function livestream_embedder_api_key_callback() {
     $api_key = sanitize_text_field(get_option('livestream_embedder_api_key'));
     echo '<input type="text" name="livestream_embedder_api_key" value="' . esc_attr($api_key) . '" size="50" />';
 }
 
-// Default channel field callback
 function livestream_embedder_default_channel_callback() {
     $default_channel = sanitize_text_field(get_option('livestream_embedder_default_channel'));
     echo '<input type="text" name="livestream_embedder_default_channel" value="' . esc_attr($default_channel) . '" size="50" />';
 }
 
-// Enqueue YouTube IFrame API
-function enqueue_youtube_iframe_api() {
+// Enqueue scripts
+function livestream_embedder_enqueue_scripts() {
     wp_enqueue_script('youtube-iframe-api', 'https://www.youtube.com/iframe_api', array(), null, true);
-}
-add_action('wp_enqueue_scripts', 'enqueue_youtube_iframe_api');
-
-// Shortcode callback
-function livestream_embedder_shortcode($atts) {
-    $channel_id = isset($atts['channel_id']) ? sanitize_text_field($atts['channel_id']) : sanitize_text_field(get_option('livestream_embedder_default_channel'));
-    $api_key = sanitize_text_field(get_option('livestream_embedder_api_key'));
-
-    if (empty($channel_id)) {
-        return '<p>' . esc_html__('Please provide a channel ID or set a default channel in the plugin settings.', 'livestream-embedder') . '</p>';
-    }
-
-    if (empty($api_key)) {
-        return '<p>' . esc_html__('Please provide a valid YouTube Data API key in the plugin settings.', 'livestream-embedder') . '</p>';
-    }
-
-    $embed_code = '<div id="livestream-container" style="height:360px; width:640px"></div>';
-    $embed_code .= '<script>
+    
+    $inline_script = '
         var player;
 
         function onYouTubeIframeAPIReady() {
@@ -150,20 +131,22 @@ function livestream_embedder_shortcode($atts) {
         }
 
         function onPlayerReady(event) {
-            var channelId = "' . esc_js($channel_id) . '";
-            fetch("https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=" + channelId + "&eventType=live&type=video&key=' . esc_js($api_key) . '")
+            var channelId = "' . esc_js(get_option('livestream_embedder_default_channel')) . '";
+            fetch("https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=" + channelId + "&eventType=live&type=video&key=' . esc_js(get_option('livestream_embedder_api_key')) . '")
                 .then(response => response.json())
                 .then(data => {
                     if (data.items && data.items.length > 0) {
                         var videoId = data.items[0].id.videoId;
                         player.loadVideoById(videoId);
                     } else {
-                        fetch("https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=" + channelId + "&order=date&type=video&key=' . esc_js($api_key) . '")
+                        fetch("https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=" + channelId + "&order=date&type=video&key=' . esc_js(get_option('livestream_embedder_api_key')) . '")
                             .then(response => response.json())
                             .then(data => {
                                 if (data.items && data.items.length > 0) {
                                     var videoId = data.items[0].id.videoId;
                                     player.loadVideoById(videoId);
+                                } else {
+                                    document.getElementById("livestream-container").innerHTML = "<p>' . esc_js(esc_html__('No live stream or recent video found. Please check your API key and Channel ID.', 'livestream-embedder')) . '</p>";
                                 }
                             })
                             .catch(error => {
@@ -175,8 +158,24 @@ function livestream_embedder_shortcode($atts) {
                     document.getElementById("livestream-container").innerHTML = "<p>' . esc_js(esc_html__('Unable to load live stream. Please check your API key and Channel ID.', 'livestream-embedder')) . '</p>";
                 });
         }
-    </script>';
+    ';
+    wp_add_inline_script('youtube-iframe-api', $inline_script);
+}
+add_action('wp_enqueue_scripts', 'livestream_embedder_enqueue_scripts');
 
-    return $embed_code;
+// Shortcode callback
+function livestream_embedder_shortcode($atts) {
+    $channel_id = isset($atts['channel_id']) ? sanitize_text_field($atts['channel_id']) : sanitize_text_field(get_option('livestream_embedder_default_channel'));
+    $api_key = sanitize_text_field(get_option('livestream_embedder_api_key'));
+
+    if (empty($channel_id)) {
+        return '<p>' . esc_html__('Please provide a channel ID or set a default channel in the plugin settings.', 'livestream-embedder') . '</p>';
+    }
+
+    if (empty($api_key)) {
+        return '<p>' . esc_html__('Please provide a valid YouTube Data API key in the plugin settings.', 'livestream-embedder') . '</p>';
+    }
+
+    return '<div id="livestream-container" style="height:360px; width:640px"></div>';
 }
 add_shortcode('livestream_embedder', 'livestream_embedder_shortcode');
