@@ -20,6 +20,11 @@ Livestream Embedder allows you to embed a live stream from a YouTube channel or 
 * Display error messages if no live stream is available.
 * Responsive video embeds.
 
+**Note on External Services:**
+This plugin uses the YouTube iframe API and YouTube Data API to fetch video data from YouTube and display it. Users must provide their own YouTube API key, which is required to make requests to the YouTube Data API v3. The data requested includes information about the live streams or videos on a given YouTube channel.
+
+By using this plugin, you agree to YouTube's [Terms of Service](https://www.youtube.com/t/terms) and [Privacy Policy](https://policies.google.com/privacy).
+
 **Shortcode Usage:**
 
 1. To embed a live stream from a specific channel:
@@ -44,6 +49,10 @@ Livestream Embedder allows you to embed a live stream from a YouTube channel or 
 4. Use the `[livestream_embedder]` shortcode in your posts or pages to embed the live stream.
 
 == Frequently Asked Questions ==
+
+= How does this plugin interact with YouTube? =
+
+This plugin uses the YouTube iframe API and the YouTube Data API to fetch video data and display YouTube live streams or recent videos. You must provide a YouTube API key in order to access YouTube's video data.
 
 = How do I get a YouTube Data API key? =
 
