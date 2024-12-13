@@ -114,52 +114,96 @@ function livestream_embedder_default_channel_callback() {
 
 // Enqueue scripts
 function livestream_embedder_enqueue_scripts() {
-    wp_enqueue_script('youtube-iframe-api', 'https://www.youtube.com/iframe_api', array(), null, true);
-    
-    $inline_script = '
-        var player;
+    if ( is_admin() ) {
+        // Don’t run on admin pages
+        return;
+    }
 
-        function onYouTubeIframeAPIReady() {
-            player = new YT.Player("livestream-container", {
-                height: "360",
-                width: "640",
-                videoId: "",
-                events: {
-                    "onReady": onPlayerReady
+    global $post;
+    if ( ! isset( $post ) ) {
+        return;
+    }
+
+    // Only enqueue scripts if the shortcode is present in the content
+    if ( has_shortcode( $post->post_content, 'livestream_embedder' ) ) {
+        $channel_id = esc_js(get_option('livestream_embedder_default_channel'));
+        $api_key = esc_js(get_option('livestream_embedder_api_key'));
+
+        // Enqueue the YouTube IFrame API
+        $script_handle = 'youtube-iframe-api';
+        $script_path = plugin_dir_path(__FILE__) . 'dummy.js'; // You can use any file from your plugin directory for filemtime
+        wp_enqueue_script(
+            $script_handle,
+            'https://www.youtube.com/iframe_api',
+            array(),
+            filemtime($script_path), // Ensures fresh load based on modification time
+            true
+        );
+
+        // Inline script with the global function callback
+        $inline_script = "
+            var player;
+
+            window.onYouTubeIframeAPIReady = function() {
+                var container = document.getElementById('livestream-container');
+                if (!container) {
+                    // Don't create the player if no container
+                    return;
                 }
-            });
-        }
 
-        function onPlayerReady(event) {
-            var channelId = "' . esc_js(get_option('livestream_embedder_default_channel')) . '";
-            fetch("https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=" + channelId + "&eventType=live&type=video&key=' . esc_js(get_option('livestream_embedder_api_key')) . '")
-                .then(response => response.json())
-                .then(data => {
-                    if (data.items && data.items.length > 0) {
-                        var videoId = data.items[0].id.videoId;
-                        player.loadVideoById(videoId);
-                    } else {
-                        fetch("https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=" + channelId + "&order=date&type=video&key=' . esc_js(get_option('livestream_embedder_api_key')) . '")
-                            .then(response => response.json())
-                            .then(data => {
-                                if (data.items && data.items.length > 0) {
-                                    var videoId = data.items[0].id.videoId;
-                                    player.loadVideoById(videoId);
-                                } else {
-                                    document.getElementById("livestream-container").innerHTML = "<p>' . esc_js(esc_html__('No live stream or recent video found. Please check your API key and Channel ID.', 'livestream-embedder')) . '</p>";
-                                }
-                            })
-                            .catch(error => {
-                                document.getElementById("livestream-container").innerHTML = "<p>' . esc_js(esc_html__('Unable to load live stream. Please check your API key and Channel ID.', 'livestream-embedder')) . '</p>";
-                            });
+                player = new YT.Player('livestream-container', {
+                    height: '360',
+                    width: '640',
+                    videoId: '',
+                    events: {
+                        'onReady': onPlayerReady
                     }
-                })
-                .catch(error => {
-                    document.getElementById("livestream-container").innerHTML = "<p>' . esc_js(esc_html__('Unable to load live stream. Please check your API key and Channel ID.', 'livestream-embedder')) . '</p>";
                 });
-        }
-    ';
-    wp_add_inline_script('youtube-iframe-api', $inline_script);
+            };
+
+            function onPlayerReady(event) {
+                var channelId = '{$channel_id}';
+                var apiKey = '{$api_key}';
+
+                if (!channelId || !apiKey) {
+                    document.getElementById('livestream-container').innerHTML = '<p>Please provide a valid YouTube API key and Channel ID.</p>';
+                    return;
+                }
+
+                // Try to find a live event
+                fetch('https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=' + channelId + '&eventType=live&type=video&key=' + apiKey)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.items && data.items.length > 0) {
+                            var videoId = data.items[0].id.videoId;
+                            player.loadVideoById(videoId);
+                        } else {
+                            // If no live event, load the most recent video
+                            fetch('https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=' + channelId + '&order=date&type=video&key=' + apiKey)
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.items && data.items.length > 0) {
+                                        var videoId = data.items[0].id.videoId;
+                                        player.loadVideoById(videoId);
+                                    } else {
+                                        document.getElementById('livestream-container').innerHTML = '<p>No live stream or recent video found. Please check your API key and Channel ID.</p>';
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error(error);
+                                    document.getElementById('livestream-container').innerHTML = '<p>Unable to load live stream. Please check your API key and Channel ID.</p>';
+                                });
+                        }
+                    })
+                    .catch(error => {
+                        console.error(error);
+                        document.getElementById('livestream-container').innerHTML = '<p>Unable to load live stream. Please check your API key and Channel ID.</p>';
+                    });
+            }
+        ";
+
+        wp_add_inline_script($script_handle, $inline_script);
+    }
 }
 add_action('wp_enqueue_scripts', 'livestream_embedder_enqueue_scripts');
 
@@ -176,6 +220,6 @@ function livestream_embedder_shortcode($atts) {
         return '<p>' . esc_html__('Please provide a valid YouTube Data API key in the plugin settings.', 'livestream-embedder') . '</p>';
     }
 
-    return '<div id="livestream-container" style="height:360px; width:640px"></div>';
+    return '<div id="livestream-container" style="height:360px; width:640px;"></div>';
 }
 add_shortcode('livestream_embedder', 'livestream_embedder_shortcode');
