@@ -7,7 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 Plugin Name: Livestream Embedder
 Plugin URI: https://github.com/stronganchor/livestream-embedder/
 Description: Embeds a YouTube livestream or most recent video from a YouTube channel.
-Version: 1.0.1
+Version: 1.0.2
 Author: Strong Anchor Tech
 Author URI: https://stronganchortech.com/
 License: GPLv2 or later
@@ -37,6 +37,43 @@ function livestream_embedder_sanitize_channel_id( $channel_id ) {
 	$channel_id = preg_replace( '/[^A-Za-z0-9_-]/', '', $channel_id );
 
 	return substr( $channel_id, 0, 128 );
+}
+
+function livestream_embedder_get_allowed_channels() {
+	$channels = get_transient( 'livestream_embedder_allowed_channels' );
+	if ( ! is_array( $channels ) ) {
+		$channels = array();
+	}
+
+	$default_channel = livestream_embedder_sanitize_channel_id( get_option( 'livestream_embedder_default_channel', '' ) );
+	if ( '' !== $default_channel ) {
+		$channels[] = $default_channel;
+	}
+
+	$channels = array_map( 'livestream_embedder_sanitize_channel_id', $channels );
+	$channels = array_values( array_unique( array_filter( $channels ) ) );
+
+	return array_slice( $channels, 0, 100 );
+}
+
+function livestream_embedder_remember_allowed_channel( $channel_id ) {
+	$channel_id = livestream_embedder_sanitize_channel_id( $channel_id );
+	if ( '' === $channel_id ) {
+		return;
+	}
+
+	$channels = livestream_embedder_get_allowed_channels();
+	if ( ! in_array( $channel_id, $channels, true ) ) {
+		$channels[] = $channel_id;
+	}
+
+	set_transient( 'livestream_embedder_allowed_channels', array_slice( array_values( array_unique( $channels ) ), 0, 100 ), DAY_IN_SECONDS );
+}
+
+function livestream_embedder_channel_is_allowed( $channel_id ) {
+	$channel_id = livestream_embedder_sanitize_channel_id( $channel_id );
+
+	return '' !== $channel_id && in_array( $channel_id, livestream_embedder_get_allowed_channels(), true );
 }
 
 function livestream_embedder_settings_page_content() {
@@ -148,10 +185,17 @@ function livestream_embedder_ajax_get_video() {
 		wp_send_json_error( array( 'message' => __( 'Missing YouTube configuration.', 'livestream-embedder' ) ), 400 );
 	}
 
+	if ( ! livestream_embedder_channel_is_allowed( $channel_id ) ) {
+		wp_send_json_error( array( 'message' => __( 'This channel is not configured for embedding.', 'livestream-embedder' ) ), 403 );
+	}
+
 	$cache_key = 'livestream_embedder_video_' . md5( $channel_id );
 	$cached    = get_transient( $cache_key );
 	if ( is_array( $cached ) && ! empty( $cached['video_id'] ) ) {
 		wp_send_json_success( $cached );
+	}
+	if ( is_array( $cached ) && ! empty( $cached['not_found'] ) ) {
+		wp_send_json_error( array( 'message' => __( 'No live stream or recent video found.', 'livestream-embedder' ) ), 404 );
 	}
 
 	$video_id = livestream_embedder_fetch_youtube_video_id( $channel_id, $api_key, 'live' );
@@ -163,6 +207,7 @@ function livestream_embedder_ajax_get_video() {
 	}
 
 	if ( '' === $video_id ) {
+		set_transient( $cache_key, array( 'not_found' => true ), 5 * MINUTE_IN_SECONDS );
 		wp_send_json_error( array( 'message' => __( 'No live stream or recent video found.', 'livestream-embedder' ) ), 404 );
 	}
 
@@ -280,6 +325,8 @@ function livestream_embedder_shortcode( $atts ) {
 	if ( '' === sanitize_text_field( get_option( 'livestream_embedder_api_key', '' ) ) ) {
 		return '<p>' . esc_html__( 'Please configure the YouTube Data API key in the plugin settings.', 'livestream-embedder' ) . '</p>';
 	}
+
+	livestream_embedder_remember_allowed_channel( $channel_id );
 
 	return '<div class="livestream-embedder-container" data-channel-id="' . esc_attr( $channel_id ) . '" style="height:360px; width:640px;"></div>';
 }
